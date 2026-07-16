@@ -24,6 +24,16 @@
     $ct_taxable = number_format($ct_taxable, 2, '.', '');
     $ct_vat     = number_format($ct_vat, 2, '.', '');
 
+    // ---------- server-side currency formatter (JS display_currency doesn't run in pdf/print) ----------
+    $ct_symbol    = $receipt_details->currency_symbol ?? (session('currency')['symbol'] ?? '');
+    $ct_placement = session('business.currency_symbol_placement', 'before');
+    $ct_money = function ($amount) use ($ct_symbol, $ct_placement) {
+        if ($ct_symbol === '') {
+            return $amount;
+        }
+        return $ct_placement == 'after' ? $amount.' '.$ct_symbol : $ct_symbol.' '.$amount;
+    };
+
     // ---------- meta columns: Invoice Date, Due Date + sell custom fields ----------
     $ct_meta   = [];
     $ct_meta[] = [(($receipt_details->date_label ?? '') ?: 'Invoice Date'), $receipt_details->invoice_date ?? ''];
@@ -57,7 +67,7 @@
     .contech-invoice .ct-b { font-weight: 700; }
 
     /* ---------- peach header band ---------- */
-    .contech-invoice .ct-header { background: {{ $peach }} !important; padding: 16px 28px 14px; }
+    .contech-invoice .ct-header { background: {{ $peach }} !important; padding: 6px 28px 2px; }
     .contech-invoice .ct-logobox { display: inline-block; background: #fff !important; border-radius: 12px; padding: 10px 18px; }
     .contech-invoice .ct-logo { max-height: 78px; max-width: 220px; width: auto; display: block; }
     .contech-invoice .ct-logo-name { color: {{ $maroon }} !important; font-size: 26px; font-weight: 800; letter-spacing: 1px; }
@@ -66,7 +76,7 @@
     .contech-invoice .ct-h-meta * { color: {{ $soft_ink }} !important; }
 
     /* ---------- title band: white sheet cuts up into the peach with a diagonal left edge ---------- */
-    .contech-invoice .ct-titlewrap { background: {{ $peach }} !important; text-align: right; margin: 0; padding: 26px 0 0; }
+    .contech-invoice .ct-titlewrap { background: {{ $peach }} !important; text-align: right; margin: 0; padding: 8px 0 0; }
     .contech-invoice .ct-titleband { display: inline-block; vertical-align: bottom; background: #fff !important;
         clip-path: polygon(64px 0, 100% 0, 100% 100%, 0 100%);
         padding: 14px 28px 10px 96px; min-width: 58%; text-align: right; }
@@ -142,10 +152,6 @@
                             {!! implode('<br>', $sub_headings) !!}<br><br>
                         @endif
 
-                        @if(!empty($receipt_details->address))
-                            {!! $receipt_details->address !!}<br>
-                        @endif
-
                         @if(!empty($receipt_details->code_1))
                             {{ $receipt_details->code_label_1 ?? '' }} : {{ $receipt_details->code_1 }}<br>
                         @endif
@@ -173,14 +179,28 @@
 
         {{-- ================= CUSTOMER ================= --}}
         <div class="ct-customer">
+            @php
+                // customer_info already starts with the customer name (via contact_address);
+                // strip it so the name only appears once, in the styled line above.
+                $ct_cust_info = $receipt_details->customer_info ?? '';
+                $ct_cust_name = trim(strip_tags($receipt_details->customer_name ?? ''));
+                if ($ct_cust_name !== '' && $ct_cust_info !== '') {
+                    $ct_q = preg_quote($ct_cust_name, '/');
+                    $ct_cust_info = preg_replace('/^\s*'.$ct_q.'\s*,?\s*(?:<br\s*\/?>)?/u', '', $ct_cust_info, 1, $ct_replaced);
+                    if (empty($ct_replaced)) {
+                        $ct_cust_info = preg_replace('/,?\s*(?:<br\s*\/?>)?\s*'.$ct_q.'/u', '', $ct_cust_info, 1);
+                    }
+                    $ct_cust_info = trim($ct_cust_info);
+                }
+            @endphp
             @if(!empty($receipt_details->customer_name))
                 <div class="ct-cust-name">{{ $receipt_details->customer_name }}</div>
             @endif
             @if(!empty($receipt_details->customer_custom_fields))
                 {!! $receipt_details->customer_custom_fields !!}<br>
             @endif
-            @if(!empty($receipt_details->customer_info))
-                {!! $receipt_details->customer_info !!}<br>
+            @if(!empty($ct_cust_info))
+                {!! $ct_cust_info !!}<br>
             @endif
             @if(!empty($receipt_details->customer_tax_number))
                 {{ ($receipt_details->customer_tax_label ?? '') ?: 'VAT Number:' }} {{ $receipt_details->customer_tax_number }}
@@ -220,6 +240,12 @@
                         $line_vat   = number_format($line_vat, 2, '.', '');
                         $line_gross = number_format($line_gross, 2, '.', '');
                         $line_exc   = number_format($line['line_total_exc_tax_uf'] ?? 0, 2, '.', '');
+                        // unit price recomputed from raw values so it always shows 2 decimals
+                        // even when business currency precision is 3-4
+                        $line_unit  = ($line['quantity_uf'] ?? 0) > 0
+                            ? ($line['line_total_exc_tax_uf'] ?? 0) / $line['quantity_uf']
+                            : 0;
+                        $line_unit  = number_format($line_unit, 2, '.', '');
                     @endphp
                     <tr>
                         <td>
@@ -229,7 +255,7 @@
                         </td>
                         <td class="ct-right" style="white-space: nowrap;">{{ $line['quantity'] }} {{ $line['units'] }}</td>
                         <td class="ct-right" style="white-space: nowrap;">
-                            <span class="display_currency" data-currency_symbol="true">{{ $line['unit_price_exc_tax'] }}</span>
+                            {{ $ct_money($line_unit) }}
                         </td>
                         <td class="ct-center">
                             @if(!empty($line['tax_name']))
@@ -237,13 +263,13 @@
                             @endif
                         </td>
                         <td class="ct-right" style="white-space: nowrap;">
-                            <span class="display_currency" data-currency_symbol="true">{{ $line_vat }}</span>
+                            {{ $ct_money($line_vat) }}
                         </td>
                         <td class="ct-right" style="white-space: nowrap;">
-                            <span class="display_currency" data-currency_symbol="true">{{ $line_exc }}</span>
+                            {{ $ct_money($line_exc) }}
                         </td>
                         <td class="ct-right" style="white-space: nowrap;">
-                            <span class="display_currency" data-currency_symbol="true">{{ $line_gross }}</span>
+                            {{ $ct_money($line_gross) }}
                         </td>
                     </tr>
                 @endforeach
@@ -276,13 +302,13 @@
                         <tr class="ct-t1">
                             <td>Invoice Taxable Amount</td>
                             <td class="ct-right" style="white-space: nowrap;">
-                                <span class="display_currency" data-currency_symbol="true">{{ $ct_taxable }}</span>
+                                {{ $ct_money($ct_taxable) }}
                             </td>
                         </tr>
                         <tr class="ct-t2">
                             <td>VAT Taxes</td>
                             <td class="ct-right" style="white-space: nowrap;">
-                                <span class="display_currency" data-currency_symbol="true">{{ $ct_vat }}</span>
+                                {{ $ct_money($ct_vat) }}
                             </td>
                         </tr>
                         @if(!empty($receipt_details->shipping_charges))
@@ -300,10 +326,10 @@
                         <tr class="ct-grand">
                             <td>Invoice Gross Total (Inclusive of VAT)</td>
                             <td class="ct-right" style="white-space: nowrap;">
-                                @if(!empty($receipt_details->total))
-                                    {{ $receipt_details->total }}
+                                @if(isset($receipt_details->total_unformatted) && $receipt_details->total_unformatted !== '' && $receipt_details->total_unformatted !== null)
+                                    {{ $ct_money(number_format((float) $receipt_details->total_unformatted, 2, '.', '')) }}
                                 @else
-                                    <span class="display_currency" data-currency_symbol="true">{{ $ct_gross }}</span>
+                                    {{ $ct_money($ct_gross) }}
                                 @endif
                             </td>
                         </tr>
