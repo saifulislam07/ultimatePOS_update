@@ -1,0 +1,392 @@
+================================================================================
+  BAMSA BILINGUAL TAX INVOICE  —  LIVE DEPLOYMENT GUIDE
+  (Arabic / English A4 sale invoice, design key: "bamsa")
+================================================================================
+  তৈরি: 2026-09-01
+  গিট সিঙ্ক ছাড়া ম্যানুয়ালি লাইভে দেওয়ার জন্য।
+  নিচের ধাপগুলো ক্রমানুসারে করুন। মোট ৩টি ফাইল + কিছু অ্যাডমিন সেটিংস।
+================================================================================
+
+
+--------------------------------------------------------------------------------
+  ০. আগে ব্যাকআপ নিন  (SKIP করবেন না)
+--------------------------------------------------------------------------------
+  [ ] লাইভ সার্ভারের এই ২টি ফাইলের কপি রাখুন:
+        app/Http/Controllers/InvoiceLayoutController.php
+        app/Utils/TransactionUtil.php
+  [ ] ডাটাবেজের ব্যাকআপ (mysqldump) নিন।
+
+
+--------------------------------------------------------------------------------
+  ফাইলের তালিকা — সারসংক্ষেপ
+--------------------------------------------------------------------------------
+  ১) নতুন ফাইল (আপলোড করুন)
+        resources/views/sale_pos/receipts/bamsa.blade.php
+
+  ২) এডিট করুন — ১ লাইন যোগ
+        app/Http/Controllers/InvoiceLayoutController.php
+
+  ৩) এডিট করুন — ~৫০ লাইন যোগ
+        app/Utils/TransactionUtil.php
+
+  ৪) লোগো ফাইল (ঐচ্ছিক, অ্যাডমিন থেকেও আপলোড করা যায়)
+        public/uploads/invoice_logos/<your-logo>.png
+
+
+================================================================================
+  ধাপ ১ :  নতুন ব্লেড ফাইল আপলোড
+================================================================================
+  লোকাল থেকে এই ফাইলটি হুবহু কপি করে লাইভে একই পাথে রাখুন:
+
+      resources/views/sale_pos/receipts/bamsa.blade.php
+
+  * ফাইলটি সম্পূর্ণ নতুন — লাইভে এই নামে কিছু নেই, তাই ওভাররাইটের ভয় নেই।
+  * ফাইল পারমিশন: 644, ওনার = ওয়েব সার্ভার ইউজার (www-data / nginx)।
+  * এনকোডিং অবশ্যই UTF-8 (আরবি টেক্সট আছে)। FTP দিলে BINARY মোডে দিন,
+    ASCII মোডে দিলে আরবি লেখা নষ্ট হবে।
+
+
+================================================================================
+  ধাপ ২ :  InvoiceLayoutController.php  —  ডিজাইন ড্রপডাউনে অপশন যোগ
+================================================================================
+  ফাইল : app/Http/Controllers/InvoiceLayoutController.php
+  ফাংশন: private function getDesigns()     (ফাইলের একদম শেষ দিকে, ~line 250)
+
+  খুঁজুন এই লাইনটি:
+  --------------------------------------------------------------------------
+            'contech' => 'CONTECH Tax Invoice ('.__('lang_v1.for_normal_printer').')',
+  --------------------------------------------------------------------------
+
+  ঠিক তার নিচে এই ১ লাইন যোগ করুন:
+  --------------------------------------------------------------------------
+            'bamsa' => 'Bilingual Tax Invoice / فاتورة ضريبية ('.__('lang_v1.for_normal_printer').')',
+  --------------------------------------------------------------------------
+
+  >> যদি লাইভে 'contech' লাইনটি না থাকে, তাহলে 'columnize-taxes' লাইনের
+     নিচে যোগ করুন। অ্যারের ভেতরে যেকোনো জায়গায় থাকলেই কাজ করবে।
+
+  যোগ করার পর ফাংশনটি দেখতে এমন হবে:
+  --------------------------------------------------------------------------
+    private function getDesigns()
+    {
+        return ['classic' => __('lang_v1.classic').' ('.__('lang_v1.for_normal_printer').')',
+            'elegant' => __('lang_v1.elegant').' ('.__('lang_v1.for_normal_printer').')',
+            'detailed' => __('lang_v1.detailed').' ('.__('lang_v1.for_normal_printer').')',
+            'columnize-taxes' => __('lang_v1.columnize_taxes').' ('.__('lang_v1.for_normal_printer').')',
+            'contech' => 'CONTECH Tax Invoice ('.__('lang_v1.for_normal_printer').')',
+            'bamsa' => 'Bilingual Tax Invoice / فاتورة ضريبية ('.__('lang_v1.for_normal_printer').')',
+            'slim' => __('lang_v1.slim').' ('.__('lang_v1.recomended_for_80mm').')',
+            'slim2' => __('lang_v1.slim').' 2 ('.__('lang_v1.recomended_for_58mm').')',
+        ];
+    }
+  --------------------------------------------------------------------------
+
+
+================================================================================
+  ধাপ ৩ :  TransactionUtil.php  —  ইনভয়েসের নতুন ডেটা ফিল্ড
+================================================================================
+  ফাইল : app/Utils/TransactionUtil.php
+  ফাংশন: public function getReceiptDetails(...)      (~line 961 থেকে শুরু)
+
+  খুঁজুন এই ব্লকটি (~line 1194-1199):
+  --------------------------------------------------------------------------
+        $output['client_id'] = '';
+        $output['client_id_label'] = '';
+        if ($il->show_client_id == 1) {
+            $output['client_id_label'] = ! empty($il->client_id_label) ? $il->client_id_label : '';
+            $output['client_id'] = ! empty($customer->contact_id) ? $customer->contact_id : '';
+        }
+  --------------------------------------------------------------------------
+
+  এর ঠিক পরে (এবং "//Sales person info" লাইনের আগে) নিচের পুরো ব্লকটি পেস্ট করুন:
+
+  ===================== COPY START =====================
+
+        //Structured buyer (customer) & seller (business location) details.
+        //Used by the bilingual "bamsa" tax invoice layout. Every value is optional
+        //and rendered only when present, so it is safe for every other layout too.
+        $output['buyer'] = [
+            'name' => ! empty($customer->name) ? $customer->name : $customer->supplier_business_name,
+            'tax_number' => $customer->tax_number,
+            'country' => $customer->country,
+            'city' => $customer->city,
+            'state' => $customer->state,
+            'street' => $customer->address_line_1,
+            'district' => $customer->address_line_2,
+            'zip_code' => $customer->zip_code,
+            'mobile' => $customer->mobile,
+            'landline' => $customer->landline,
+            'custom_field1' => $customer->custom_field1,
+            'custom_field2' => $customer->custom_field2,
+            'custom_field3' => $customer->custom_field3,
+            'custom_field4' => $customer->custom_field4,
+        ];
+
+        $output['buyer_balance'] = $this->num_f($this->getContactDue($transaction->contact_id), false, $business_details);
+
+        $output['seller'] = [
+            'name' => $business_details->name,
+            'legal_name' => trim($il->sub_heading_line3 ?? '') ?: (trim(strip_tags($il->header_text ?? '')) ?: $business_details->name),
+            'location_name' => $location_details->name,
+            'tax_number' => $business_details->tax_number_1,
+            'tax_number_2' => $business_details->tax_number_2,
+            'country' => $location_details->country,
+            'city' => $location_details->city,
+            'state' => $location_details->state,
+            'street' => $location_details->landmark,
+            'district' => $location_details->state,
+            'zip_code' => $location_details->zip_code,
+            'mobile' => $location_details->mobile,
+            'alternate_number' => $location_details->alternate_number,
+            'email' => $location_details->email,
+            'website' => $location_details->website,
+            'custom_field1' => $location_details->custom_field1,
+            'custom_field2' => $location_details->custom_field2,
+            'custom_field3' => $location_details->custom_field3,
+            'custom_field4' => $location_details->custom_field4,
+        ];
+
+        //Primary payment method (for the invoice header "Payment" cell).
+        $primary_payment = $transaction->payment_lines->first();
+        $output['payment_method'] = '';
+        if (! empty($primary_payment)) {
+            $payment_types = $this->payment_types($transaction->location_id, true);
+            $output['payment_method'] = $payment_types[$primary_payment->method] ?? $primary_payment->method;
+        }
+
+  ====================== COPY END ======================
+
+  পেস্ট করার পর ক্রম হবে:
+        ... client_id ব্লক ...
+        ... উপরের নতুন ব্লক ...
+        //Sales person info
+        $output['sales_person'] = '';
+        ...
+
+  >> এই কোড শুধু নতুন key যোগ করে, কিছু বদলায় না।
+     তাই classic / elegant / slim সহ পুরনো সব ডিজাইন আগের মতোই কাজ করবে।
+
+  সিনট্যাক্স চেক (SSH থাকলে):
+        php -l app/Utils/TransactionUtil.php
+        php -l app/Http/Controllers/InvoiceLayoutController.php
+  দুটোতেই "No syntax errors detected" আসতে হবে।
+
+
+================================================================================
+  ধাপ ৪ :  ক্যাশ ক্লিয়ার  (ফাইল আপলোডের পর অবশ্যই)
+================================================================================
+  SSH থাকলে, প্রজেক্ট রুটে গিয়ে:
+        php artisan view:clear
+        php artisan cache:clear
+        php artisan config:clear
+
+  SSH না থাকলে — cPanel File Manager দিয়ে এই ফোল্ডারের সব ফাইল ডিলিট করুন
+  (ফোল্ডারটি রাখুন, ভেতরের .php ফাইলগুলো মুছুন):
+        storage/framework/views/
+
+  OPcache চালু থাকলে PHP-FPM রিস্টার্ট করুন, নইলে পুরনো কোড ক্যাশে থেকে যাবে:
+        sudo systemctl restart php8.1-fpm      (আপনার PHP ভার্সন অনুযায়ী)
+  অথবা cPanel > "Restart PHP" / MultiPHP Manager থেকে।
+
+
+================================================================================
+  ধাপ ৫ :  অ্যাডমিন প্যানেলে সেটিংস  (ডাটাবেজে হাত দেওয়ার দরকার নেই)
+================================================================================
+  ৫.১  নতুন Invoice Layout তৈরি
+  --------------------------------------------------------------------------
+   Settings > Invoice Layouts > Add
+     - Layout name        : Bilingual Tax Invoice
+     - Design             : "Bilingual Tax Invoice / فاتورة ضريبية"   <-- নতুন অপশন
+     - Invoice heading    : Tax Invoice
+     - Invoice no. prefix : (খালি রাখুন)
+     - Header text        : আরবি কোম্পানির নাম   যেমন: شركة فيصل محمد عمر بامسق
+     - Sub heading line 1 : CAR SPARE PARTS
+     - Sub heading line 2 : لقطــع غـيـار الـسـيــارات
+     - Sub heading line 3 : পূর্ণ আরবি লিগ্যাল নাম (Seller Name ঘরে বসবে)
+     - Date format        : Y/m/d
+     - Logo               : কোম্পানির লোগো আপলোড + "Show logo" টিক
+     - QR code            : Show QR code টিক  +  ZATCA QR টিক (সৌদি ট্যাক্স QR)
+     - Show barcode       : পছন্দ অনুযায়ী
+     - Letter Head        : (ঐচ্ছিক) নিচের ৫.১ক দেখুন
+     > Save
+
+  ৫.১ক  Letter Head ব্যবহার করতে চাইলে  (ঐচ্ছিক)
+  --------------------------------------------------------------------------
+   Invoice Layout এডিট পেজে:
+     - "Letter Head" ফিল্ডে ছবি আপলোড করুন
+     - "Show letter head" চেকবক্সে টিক দিন
+     > Save
+
+   ফলাফল: লেটার হেডের ছবিটি ইনভয়েসের একদম উপরে **পুরো প্রস্থ জুড়ে** বসবে এবং
+   লেখার হেডারটি (ইংরেজি নাম + লোগো + আরবি নাম) **সম্পূর্ণ প্রতিস্থাপিত** হবে।
+   (classic / elegant ডিজাইনেও ঠিক এভাবেই কাজ করে)
+
+   ছবির সাইজ পরামর্শ : প্রস্থ ১৪০০–২০০০px, উচ্চতা ২০০–৩০০px (৫:১ থেকে ৭:১ অনুপাত)
+                       ইনভয়েসে সর্বোচ্চ ১৫০px উঁচু হবে, প্রস্থ ১০০%।
+   ফরম্যাট          : PNG (স্বচ্ছ ব্যাকগ্রাউন্ড হলে ভালো) বা JPG
+   আপলোড হয়         : public/uploads/invoice_logos/
+
+   >> লেটার হেড ব্যবহার করলে Header text / Sub heading line 1-2 আর দেখাবে না,
+      তবে Sub heading line 3 (Seller Name) কাজ করতেই থাকবে।
+   >> লেটার হেড বন্ধ করতে "Show letter head" থেকে টিক তুলে দিন — পুরনো
+      লেখার হেডার ফিরে আসবে।
+
+  ৫.২  লোকেশনে অ্যাসাইন
+  --------------------------------------------------------------------------
+   Settings > Business Locations > (প্রতিটি লোকেশন) > Edit
+     - Invoice layout for POS      : Bilingual Tax Invoice
+     - Invoice layout for Sale     : Bilingual Tax Invoice
+     > Update
+   * দুই জায়গাতেই সেট করুন — POS স্ক্রিন আর "Add Sale" আলাদা লেআউট ব্যবহার করে।
+
+  ৫.৩  ট্যাক্স ও কোম্পানির তথ্য
+  --------------------------------------------------------------------------
+   Settings > Business Settings > Tax
+     - Tax 1 Name   : VAT No
+     - Tax 1 No.    : কোম্পানির ১৫ ডিজিটের VAT নম্বর  (Seller "Vat No" ঘরে আসবে)
+   Settings > Business Settings > Business
+     - Business Name : ইংরেজি নাম (হেডারের বাঁ পাশে বড় করে আসবে)
+     - Currency      : Saudi Arabia - SAR  (Client Balance এ সিম্বল দেখাবে)
+   Tax Rates
+     - "VAT" নামে 15% একটি ট্যাক্স রেট তৈরি করুন, প্রোডাক্টে সেটি সেট করুন।
+
+  ৫.৪  ঠিকানার ঘরগুলো কোথা থেকে আসে  (গুরুত্বপূর্ণ ম্যাপিং)
+  --------------------------------------------------------------------------
+   ইনভয়েসের ঘর          <-  সিস্টেমের কোন ফিল্ড
+   ----------------------------------------------------------------------
+   SELLER (Business Location > Edit):
+     Country            <-  Country
+     City               <-  City
+     Street Name        <-  Landmark
+     District (الحي)     <-  State
+     Postal Code        <-  Zip code
+     Additional No      <-  Custom field 1        <== এখানে লিখুন
+     Building No        <-  Custom field 2        <== এখানে লিখুন
+     Contact US         <-  Mobile
+     Branch (الفرع)      <-  Location Name
+
+   BUYER (Contacts > Customer > Edit):
+     Client Name        <-  Name
+     Vat No             <-  Tax number
+     Country Code       <-  Country
+     City               <-  City
+     Street Name        <-  Address line 1
+     District (الحي)     <-  Address line 2
+     Postal Code        <-  Zip code
+     Additional No      <-  Custom field 1        <== এখানে লিখুন
+     Building No        <-  Custom field 2        <== এখানে লিখুন
+     Client Mobile      <-  Mobile
+     Client Balance     <-  স্বয়ংক্রিয় (কাস্টমারের মোট বকেয়া)
+
+   >> Contact custom field-এর নাম বদলাতে:
+      Settings > Business Settings > Custom Labels > Contact custom field 1 / 2
+
+
+================================================================================
+  ধাপ ৬ :  যাচাই  (Verification checklist)
+================================================================================
+  [ ] Settings > Invoice Layouts > Design ড্রপডাউনে নতুন অপশনটি দেখা যাচ্ছে
+  [ ] একটি সেল করে Print — নতুন ডিজাইন আসছে
+  [ ] প্রিন্ট প্রিভিউতে ঠিক ১ পেজ (২ পেজ নয়)
+  [ ] হেডারে লোগো + ইংরেজি নাম (বাঁয়ে) + আরবি নাম (ডানে)
+  [ ] Buyer / Seller বক্সের ঘরগুলো ভরাট
+  [ ] আইটেম টেবিলের চারদিকে বর্ডার আছে (উপরে-নিচে-ডানে-বাঁয়ে)
+  [ ] আইটেম টেবিল আর টোটাল বক্সের মাঝে ফাঁকা সিলের জায়গা আছে
+  [ ] নিচে বাঁয়ে QR বক্স, ডানে টোটাল বক্স
+  [ ] ফুটারে প্রিন্ট তারিখ / পেজ নম্বর / প্রিন্ট করেছেন কে
+  [ ] পুরনো ডিজাইনগুলো (classic ইত্যাদি) এখনও ঠিকঠাক কাজ করছে
+
+  ব্রাউজারের প্রিন্ট ডায়ালগে:
+     Scale = Default (100)  |  Margins = Default  |  Headers and footers = OFF
+
+
+================================================================================
+  ধাপ ৭ :  সমস্যা হলে
+================================================================================
+  * ড্রপডাউনে নতুন অপশন নেই
+      -> ধাপ ২ ঠিকমতো হয়নি, বা OPcache/config cache ক্লিয়ার হয়নি (ধাপ ৪)
+
+  * প্রিন্টে পুরনো ডিজাইন আসছে
+      -> Business Location-এ লেআউট অ্যাসাইন করা হয়নি (ধাপ ৫.২)
+      -> storage/framework/views/ ক্লিয়ার করুন
+
+  * "Undefined property" / 500 error
+      -> ধাপ ৩ এর কোড ভুল জায়গায় বসেছে। php -l দিয়ে সিনট্যাক্স চেক করুন।
+         নিশ্চিত করুন কোডটি getReceiptDetails() ফাংশনের **ভেতরে** আছে।
+
+  * আরবি লেখা প্রশ্নবোধক/ভাঙা দেখাচ্ছে
+      -> ব্লেড ফাইলটি UTF-8 এ আপলোড হয়নি। BINARY মোডে আবার আপলোড করুন।
+
+  * ২ পেজে চলে যাচ্ছে
+      -> প্রিন্ট ডায়ালগে Margins = Default, Scale = 100 আছে কিনা দেখুন।
+      -> আইটেম বেশি হলে স্বাভাবিকভাবেই ২ পেজ হবে (৭-৮ আইটেম পর্যন্ত ১ পেজ)।
+
+  * ইনভয়েসের আগে/পরে খালি পেজ আসছে
+      -> bamsa.blade.php এর পুরনো ভার্সন আছে। নতুনটি আপলোড করুন।
+         নতুন ভার্সনের @media print ব্লকে দুটো জিনিস আছে (দুটোই দরকার):
+           ১) অ্যাপের শেল (header, #scrollable-container.h-screen, মডাল) display:none
+              — নাহলে ওগুলো ইনভয়েসের আগে/পরে খালি পেজ তৈরি করে।
+           ২) .bm-wrap এর min-height প্রিন্টে বাতিল + .bm-stamp ফিক্সড 150px
+              — নাহলে প্রিন্টারের ইউজেবল হাইট একটু ছোট হলে শীটের সামান্য অংশ
+                ২য় পেজে গিয়ে একটা খালি পেজ তৈরি করে।
+      -> storage/framework/views/ ক্লিয়ার + PHP-FPM রিস্টার্ট করুন।
+
+  * বর্ডার আসছে না
+      -> প্রিন্ট ডায়ালগে "Background graphics" টিক দিন।
+
+
+================================================================================
+  ধাপ ৮ :  রোলব্যাক  (ফিরিয়ে নিতে হলে)
+================================================================================
+  ১. Business Location > Edit > Invoice layout আগের লেআউটে ফিরিয়ে দিন।
+     (এতেই পুরনো ডিজাইন ফিরে আসবে — কোড রোলব্যাক না করলেও চলবে)
+  ২. প্রয়োজনে ব্যাকআপ রাখা ২টি PHP ফাইল ফিরিয়ে দিন।
+  ৩. bamsa.blade.php ডিলিট করুন।
+  ৪. php artisan view:clear
+
+
+================================================================================
+  ⚠ সতর্কতা :  লোকাল টেস্ট ডেটা লাইভে নেবেন না
+================================================================================
+  ডিজাইন টেস্ট করার জন্য লোকাল ডাটাবেজে যা যা বদলানো হয়েছে —
+  এগুলো লাইভে **নেওয়া যাবে না**:
+
+    - business.name  ->  "Faisal Moammed Omar Bamsa Co"
+    - business currency  ->  SAR
+    - business_locations #1 এর নাম ও ঠিকানা আরবিতে বদলানো
+    - "মؤسسة تامر فيصل..." নামে একটি টেস্ট কাস্টমার + 33,544.19 ওপেনিং ব্যালেন্স
+    - ৭টি টেস্ট প্রোডাক্ট (12161-0C010, 48171-42070, ...)
+    - টেস্ট ইনভয়েস 702438
+
+  >> লাইভে শুধু এই গাইডের ধাপ ১-৫ করুন। কোনো SQL ইমপোর্ট করবেন না।
+
+
+================================================================================
+  টেকনিক্যাল নোট  (ভবিষ্যতে কেউ এডিট করলে পড়ুন)
+================================================================================
+  এই লেআউটে কিছু জিনিস ইচ্ছাকৃতভাবে "অস্বাভাবিক" — সরাবেন না:
+
+  1. পুরো ইনভয়েস একটি ১-সেল টেবিলের (.bm-sheet) ভেতরে।
+     কারণ: এই অ্যাপের প্রিন্ট কনটেক্সটে শুধু <td> এর বর্ডার নির্ভরযোগ্যভাবে আসে।
+     <div> বা <table> এলিমেন্টের নিজের বর্ডার ড্রপ হয় বা ডাবল হয়।
+
+  2. আইটেম টেবিলে border-collapse: separate (collapse নয়)।
+     কারণ: collapse মোডে Chrome প্রিন্টে <thead> এর উপরের বর্ডার মুছে ফেলে।
+     সেপারেট মোডে টেবিলের border: 0, সব লাইন সেল থেকে আসে (নইলে ডান/নিচ ২px হয়)।
+
+  3. @page { size: A4; margin: 5mm }  —  @media print এর **বাইরে**।
+     ভেতরে দিলে Chrome ১ ইঞ্চি ডিফল্ট মার্জিন নেয়, ফলে ২ পেজ হয়ে যায়।
+
+  4. পাশাপাশি বক্সগুলো flexbox (.bm-split / .bm-col), নেস্টেড টেবিল নয়।
+     নেস্টেড লেআউট টেবিল প্রিন্টে ভুতুড়ে খালি কলাম তৈরি করছিল।
+
+  5. .bm-stamp  —  flex: 1 1 auto; খালি ব্যান্ড।
+     পেজের বাকি উচ্চতা টেনে নেয়, ফিজিক্যাল সিলের জন্য সংরক্ষিত। খালিই থাকবে।
+
+  পরিবর্তনের পর সবসময় যাচাই করুন:
+     chrome --headless --print-to-pdf=out.pdf file:///.../preview.html
+     তারপর PDF এ "/Type /Page" গুনে দেখুন = ১
+
+================================================================================
+  শেষ
+================================================================================

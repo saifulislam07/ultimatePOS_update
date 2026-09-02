@@ -1198,6 +1198,58 @@ class TransactionUtil extends Util
             $output['client_id'] = ! empty($customer->contact_id) ? $customer->contact_id : '';
         }
 
+        //Structured buyer (customer) & seller (business location) details.
+        //Used by the bilingual "bamsa" tax invoice layout. Every value is optional
+        //and rendered only when present, so it is safe for every other layout too.
+        $output['buyer'] = [
+            'name' => ! empty($customer->name) ? $customer->name : $customer->supplier_business_name,
+            'tax_number' => $customer->tax_number,
+            'country' => $customer->country,
+            'city' => $customer->city,
+            'state' => $customer->state,
+            'street' => $customer->address_line_1,
+            'district' => $customer->address_line_2,
+            'zip_code' => $customer->zip_code,
+            'mobile' => $customer->mobile,
+            'landline' => $customer->landline,
+            'custom_field1' => $customer->custom_field1,
+            'custom_field2' => $customer->custom_field2,
+            'custom_field3' => $customer->custom_field3,
+            'custom_field4' => $customer->custom_field4,
+        ];
+
+        $output['buyer_balance'] = $this->num_f($this->getContactDue($transaction->contact_id), false, $business_details);
+
+        $output['seller'] = [
+            'name' => $business_details->name,
+            'legal_name' => trim($il->sub_heading_line3 ?? '') ?: (trim(strip_tags($il->header_text ?? '')) ?: $business_details->name),
+            'location_name' => $location_details->name,
+            'tax_number' => $business_details->tax_number_1,
+            'tax_number_2' => $business_details->tax_number_2,
+            'country' => $location_details->country,
+            'city' => $location_details->city,
+            'state' => $location_details->state,
+            'street' => $location_details->landmark,
+            'district' => $location_details->state,
+            'zip_code' => $location_details->zip_code,
+            'mobile' => $location_details->mobile,
+            'alternate_number' => $location_details->alternate_number,
+            'email' => $location_details->email,
+            'website' => $location_details->website,
+            'custom_field1' => $location_details->custom_field1,
+            'custom_field2' => $location_details->custom_field2,
+            'custom_field3' => $location_details->custom_field3,
+            'custom_field4' => $location_details->custom_field4,
+        ];
+
+        //Primary payment method (for the invoice header "Payment" cell).
+        $primary_payment = $transaction->payment_lines->first();
+        $output['payment_method'] = '';
+        if (! empty($primary_payment)) {
+            $payment_types = $this->payment_types($transaction->location_id, true);
+            $output['payment_method'] = $payment_types[$primary_payment->method] ?? $primary_payment->method;
+        }
+
         //Sales person info
         $output['sales_person'] = '';
         $output['sales_person_label'] = '';
