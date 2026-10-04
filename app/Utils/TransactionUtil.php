@@ -1250,6 +1250,30 @@ class TransactionUtil extends Util
             $output['payment_method'] = $payment_types[$primary_payment->method] ?? $primary_payment->method;
         }
 
+        //Raw sale header fields for the "actit" tax invoice layout
+        //(PO Number = sell custom field 1, Job No = sell custom field 2).
+        $pay_term = '';
+        if (! empty($transaction->pay_term_number) && ! empty($transaction->pay_term_type)) {
+            $pay_term = $transaction->pay_term_number.' '.__('lang_v1.'.$transaction->pay_term_type);
+        }
+        $output['sell_meta'] = [
+            'po_number' => $transaction->custom_field_1,
+            'job_no' => $transaction->custom_field_2,
+            'payment_terms' => $pay_term,
+            'transaction_date' => $transaction->transaction_date,
+            'currency_code' => $business_details->currency_code ?? '',
+            'cr_number' => $business_details->tax_number_2,
+            //Bank block: Account Holder, Bank Name, Account Number, IBAN, SWIFT
+            //are read from invoice layout sub heading lines 1-5.
+            'bank' => [
+                'Account Holder' => $il->sub_heading_line1,
+                'Bank Name' => $il->sub_heading_line2,
+                'Account Number' => $il->sub_heading_line3,
+                'IBAN Number' => $il->sub_heading_line4,
+                'SWIFT Code' => $il->sub_heading_line5,
+            ],
+        ];
+
         //Sales person info
         $output['sales_person'] = '';
         $output['sales_person_label'] = '';

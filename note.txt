@@ -1,0 +1,118 @@
+=====================================================================
+  ACTIT TAX INVOICE (فاتورة ضريبية) — ব্যবহারের নোট
+  ডিজাইনের নাম: actit   |   তৈরির তারিখ: 2026-10-03
+=====================================================================
+
+---------------------------------------------------------------------
+২. নতুন ইনভয়েস লেআউট সেট করা
+---------------------------------------------------------------------
+1. Settings > Invoice Settings > Invoice Layouts > Add
+   (অথবা আগের "ACTIT Tax Invoice" লেআউট Edit করুন)
+2. Design ড্রপডাউন থেকে বেছে নিন:
+      "Tax Invoice From/To / فاتورة ضريبية"
+3. Invoice heading : Tax Invoice
+4. নিচের ঘরগুলোতে ব্যাংকের তথ্য দিন (এই ক্রমে):
+      Sub heading line 1  = Account Holder   (যেমন: Quality Sign)
+      Sub heading line 2  = Bank Name        (যেমন: AL RAJHI)
+      Sub heading line 3  = Account Number
+      Sub heading line 4  = IBAN Number
+      Sub heading line 5  = SWIFT Code       (যেমন: RJHI)
+   কোনো লাইন খালি থাকলে সেই সারি দেখাবে না। সব খালি থাকলে
+   ব্যাংক টেবিলই দেখাবে না।
+5. Footer text : নিচের ঠিকানা / ফোন / ইমেইলের অংশ (HTML চলবে)
+6. Letter Head : উপরে কোনো হেডারের ছবি চাইলে আপলোড করে
+   "Show letter head" টিক দিন। না দিলে উপরে শুধু টাইটেল থাকবে।
+7. QR কোড দেখাতে : "Show QR code" এবং ZATCA QR চালু রাখুন।
+8. Save করুন।
+
+
+---------------------------------------------------------------------
+৩. লোকেশনে লেআউটটা লাগানো
+---------------------------------------------------------------------
+Settings > Business Locations > লোকেশন Edit
+   - Invoice layout for POS   : ACTIT Tax Invoice
+   - Invoice layout for sale  : ACTIT Tax Invoice
+এরপর এই লোকেশনের সব সেল এই ডিজাইনে প্রিন্ট হবে।
+(ডেমোতে "AL-Khobar" লোকেশন — আগের "abcd" — এটা ব্যবহার করছে।)
+
+
+---------------------------------------------------------------------
+৪. ইনভয়েসের কোন ঘরের তথ্য কোথা থেকে আসে
+---------------------------------------------------------------------
+উপরের তথ্যের ঘর:
+   Invoice Number      = সেলের Invoice No (আরবি সংখ্যা নিজে থেকেই হয়)
+   Invoice Issue Date  = সেলের তারিখ (আরবি সংখ্যা নিজে থেকেই হয়)
+   PO Number           = সেলের Custom field 1
+   Job No              = সেলের Custom field 2
+   Payment Terms       = সেলের Pay term (যেমন 30 Days)
+
+From (Company Details):
+   Name         = Settings > Business Settings > Business name
+   VAT Number   = Business Settings > Tax 1 No.
+   CR Number    = Business Settings > Tax 2 No.
+   Building No  = Business Location > Custom field 2
+   Street Name  = Business Location > Landmark
+   District     = Business Location > State
+   City / Country / Postal Code = Business Location-এর ঘরগুলো
+
+To (Client Details):
+   Name         = Contact-এর নাম
+   VAT Number   = Contact > Tax number
+   Building No  = Contact > Custom field 2
+   Street Name  = Contact > Address line 1
+   District     = Contact > Address line 2 (খালি থাকলে State)
+   City / Country / Zip code = Contact-এর ঘরগুলো
+
+আইটেম টেবিল:
+   Description  = প্রোডাক্টের নাম + সেলের লাইনে লেখা নোট
+   Quantity     = পরিমাণ + ইউনিট (যেমন 10 Pcs)
+   Tax Rate     = প্রোডাক্টের ট্যাক্স (যেমন VAT 15%)
+
+Amount In Words = মোট টাকা ইংরেজি কথায় + "Riyal" (SAR হলে)
+
+
+---------------------------------------------------------------------
+৫. PO Number ও Job No সেলের ফর্মে দেখানো
+---------------------------------------------------------------------
+1. Settings > Business Settings > Custom labels
+2. Sell custom field 1 = PO Number
+   Sell custom field 2 = Job No
+3. Save করুন। এরপর Add Sale ফর্মে এই দুটো ঘর আসবে।
+
+
+---------------------------------------------------------------------
+৬. নতুন সেল করে টেস্ট করা
+---------------------------------------------------------------------
+1. Sell > Add Sale
+2. Business Location : AL-Khobar (যে লোকেশনে ACTIT লেআউট লাগানো)
+3. Customer : যেমন Jumeirah Trading Co
+4. প্রোডাক্ট যোগ করুন, দরকার হলে লাইনে নোট লিখুন (Description-এ আসবে)
+5. PO Number / Job No / Pay term ভরুন
+6. Save and Print
+
+
+---------------------------------------------------------------------
+৭. ডেমো ডাটা (ছবির সাথে মিলিয়ে যোগ করা হয়েছে)
+---------------------------------------------------------------------
+   - Invoice Layout id 3   : "ACTIT Tax Invoice"
+   - Business name         : AMAL CADY INFORMATION TECHNOLOGIES
+                             (VAT 311948295500003, CR 2051236189)
+   - Location 2            : AL-Khobar (আগের ডামি "abcd")
+   - Customer              : Jumeirah Trading Co
+   - Product / Unit        : "Only PVD Coating..." / Pcs
+   - Sale                  : QS-200113, 13-01-2026, 10 x 1,200 = 13,800 SAR
+
+সতর্কতা: Business name পুরো business-এর জন্য একটাই। তাই অন্য
+লোকেশনের (bamsa) ইনভয়েসেও যেখানে business name আসে সেখানে নতুন
+নাম দেখাবে। আসল ব্যবহারের আগে Business Settings-এ সঠিক নাম,
+VAT ও CR নম্বর দিয়ে দিন।
+
+
+---------------------------------------------------------------------
+৮. কোডের ফাইল (ডেভেলপারের জন্য)
+---------------------------------------------------------------------
+   resources/views/sale_pos/receipts/actit.blade.php   — ইনভয়েস ডিজাইন
+   app/Http/Controllers/InvoiceLayoutController.php    — Design লিস্টে যোগ
+   app/Utils/TransactionUtil.php                       — sell_meta ডাটা
+                                                         (PO, Job, Pay term,
+                                                          CR, ব্যাংক)
