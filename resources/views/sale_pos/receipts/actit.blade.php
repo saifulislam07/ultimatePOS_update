@@ -506,6 +506,12 @@
                                     <td class="ac-lbl" colspan="2">Job No</td>
                                     <td colspan="2">{{ $meta['job_no'] ?? '' }}</td>
                                 </tr>
+                                @if (!empty($receipt_details->delivery_person))
+                                    <tr>
+                                        <td class="ac-lbl" colspan="2">Delivery Person</td>
+                                        <td colspan="2">{{ $receipt_details->delivery_person }}</td>
+                                    </tr>
+                                @endif
                             </table>
                         </td>
                         <td class="ac-qr">

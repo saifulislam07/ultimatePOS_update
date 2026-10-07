@@ -1282,6 +1282,10 @@ class TransactionUtil extends Util
             $output['sales_person'] = ! empty($transaction->sales_person->user_full_name) ? $transaction->sales_person->user_full_name : '';
         }
 
+        //Delivery person info (shown on invoice only when one is selected)
+        $output['delivery_person'] = ! empty($transaction->delivery_person_user) ? $transaction->delivery_person_user->user_full_name : '';
+        $output['delivery_person_label'] = __('lang_v1.delivery_person');
+
         //commission agent info
         $output['commission_agent'] = '';
         $output['commission_agent_label'] = '';

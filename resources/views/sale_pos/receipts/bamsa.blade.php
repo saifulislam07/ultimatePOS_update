@@ -619,6 +619,14 @@
                     </td>
                     <td class="bm-la bm-ar">رصيد العميل</td>
                 </tr>
+                @if (!empty($receipt_details->delivery_person))
+                    {{-- keeps both info boxes the same height when the delivery row is shown --}}
+                    <tr>
+                        <td class="bm-le">&nbsp;</td>
+                        <td class="bm-vl">&nbsp;</td>
+                        <td class="bm-la bm-ar">&nbsp;</td>
+                    </tr>
+                @endif
             </table>
         </div>
         <div class="bm-col">
@@ -642,6 +650,13 @@
                     <td class="bm-vl">{{ $receipt_details->payment_method ?? '' }}</td>
                     <td class="bm-la bm-ar">طريقة الدفع</td>
                 </tr>
+                @if (!empty($receipt_details->delivery_person))
+                    <tr>
+                        <td class="bm-le">Delivery Person</td>
+                        <td class="bm-vl">{{ $receipt_details->delivery_person }}</td>
+                        <td class="bm-la bm-ar">مندوب التوصيل</td>
+                    </tr>
+                @endif
             </table>
         </div>
     </div>

@@ -106,6 +106,13 @@
 				</div>
 			@endif
 
+			@if(!empty($receipt_details->delivery_person))
+				<div class="textbox-info">
+					<p class="f-left"><strong>{{$receipt_details->delivery_person_label}}</strong></p>
+					<p class="f-right">{{$receipt_details->delivery_person}}</p>
+				</div>
+			@endif
+
 			@if(!empty($receipt_details->sales_person_label))
 				<div class="textbox-info">
 					<p class="f-left"><strong>{{$receipt_details->sales_person_label}}</strong></p>

@@ -86,6 +86,9 @@
 				, {{$receipt_details->date_label}}
 				{{$receipt_details->invoice_date}}
 			@endif
+			@if(!empty($receipt_details->delivery_person))
+				<br>{{$receipt_details->delivery_person_label}}: {{$receipt_details->delivery_person}}
+			@endif
 		</p>
 		<p>
 			<strong>{{ $receipt_details->customer_label }}</strong> {{$receipt_details->customer_name ?? ''}} <br>

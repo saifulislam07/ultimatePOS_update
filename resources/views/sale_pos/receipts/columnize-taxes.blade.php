@@ -111,6 +111,15 @@
 				{{$receipt_details->due_date ?? ''}}
 			</div>
 		@endif
+		@if (!empty($receipt_details->delivery_person))
+			<div class="text-right font-23 ">
+				<span class="pull-left">
+					{{ $receipt_details->delivery_person_label }}
+				</span>
+
+				{{ $receipt_details->delivery_person }}
+			</div>
+		@endif
 
 		@if(!empty($receipt_details->sell_custom_field_1_value))
 			<div class="text-right font-23 ">

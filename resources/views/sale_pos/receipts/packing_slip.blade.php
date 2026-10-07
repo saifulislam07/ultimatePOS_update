@@ -76,6 +76,15 @@
 				{{$receipt_details->invoice_date}}
 			</p>
 		@endif
+		@if(!empty($receipt_details->delivery_person))
+			<p class="text-right font-17">
+				<span class="pull-left">
+					{{$receipt_details->delivery_person_label}}
+				</span>
+
+				{{$receipt_details->delivery_person}}
+			</p>
+		@endif
 	</div>
 </div>
 

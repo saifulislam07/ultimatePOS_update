@@ -157,6 +157,10 @@
 				<br><b>{{$receipt_details->due_date_label}}</b> {{$receipt_details->due_date ?? ''}}
 				@endif
 
+				@if(!empty($receipt_details->delivery_person))
+				<br><b>{{$receipt_details->delivery_person_label}}:</b> {{$receipt_details->delivery_person}}
+				@endif
+
 				@if(!empty($receipt_details->brand_label) || !empty($receipt_details->repair_brand))
 					<br>
 					@if(!empty($receipt_details->brand_label))

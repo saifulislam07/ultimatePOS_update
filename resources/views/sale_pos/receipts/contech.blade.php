@@ -40,6 +40,9 @@
     if (!empty($receipt_details->due_date)) {
         $ct_meta[] = [(($receipt_details->due_date_label ?? '') ?: 'Due Date'), $receipt_details->due_date];
     }
+    if (!empty($receipt_details->delivery_person)) {
+        $ct_meta[] = [$receipt_details->delivery_person_label ?? 'Delivery Person', $receipt_details->delivery_person];
+    }
     foreach (['1', '2', '3', '4'] as $i) {
         $val = $receipt_details->{'sell_custom_field_'.$i.'_value'} ?? '';
         if (!empty($val)) {
